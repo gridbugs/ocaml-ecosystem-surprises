@@ -16,7 +16,7 @@ post starts here:
 I recently made my first non-trivial OCaml project - a synthesizer library
 called [llama](https://github.com/gridbugs/llama/). It's made up of multiple
 Opam packages, it links against native code, it calls into code in a foreign
-language (Rust), it's (somewhat!) documented, it works on MacOS and Linux, it's
+language (Rust), it's (somewhat!) documented, it works on macOS and Linux, it's
 released to the Opam repository. Non-trivial! The language ecosystem I've spent the most time
 in is Rust/Cargo and as such I'm accustomed to things "just working". This is a
 post about the times while developing my library that I was surprised or
@@ -89,7 +89,7 @@ Undefined symbols for architecture arm64:
 
 Searching for "AudioComponentFindNext" led me to some Apple developer docs for
 the `AudioToolbox` framework. So the foreign archive must depend on some frameworks
-on MacOS for doing "audio stuff" and I need to tell the linker about it.
+on macOS for doing "audio stuff" and I need to tell the linker about it.
 Eventually I found the appropriate linker flags on stack overflow to copy/paste
 into my project:
 
@@ -151,7 +151,7 @@ argument by putting the linker arguments in quotes:
 
 Now it builds!
 
-But only on MacOS.
+But only on macOS.
 
 On Linux the appropriate linker incantation is `-lasound` if you're lucky and
 the linker knows where to look for the `libasound.so` library. In general though
@@ -209,10 +209,10 @@ To generate this file we can use a dune rule:
   (:include library_flags.sexp)))
 ```
 
-This works on Linux but of course now it won't build on MacOS as we removed the
-MacOS-specific linker flags and replaced them with the Linux ones. To work in
-general (well just on MacOS and Linux) we can use dune's `(enabled_if ...)`
-field to use a different rule to generate `library_flags.sexp` on MacOS.
+This works on Linux but of course now it won't build on macOS as we removed the
+macOS-specific linker flags and replaced them with the Linux ones. To work in
+general (well just on macOS and Linux) we can use dune's `(enabled_if ...)`
+field to use a different rule to generate `library_flags.sexp` on macOS.
 
 ```clojure
 (rule
@@ -251,18 +251,18 @@ field to use a different rule to generate `library_flags.sexp` on MacOS.
  (library_flags
   (:include library_flags.sexp)))
 ```
-Note that the system name for MacOS is "macosx". There's an "x" at the end.
+Note that the system name for macOS is "macosx". There's an "x" at the end.
 Don't forget the "x" or the comparison will always be false.
 
 Also note the third rule which creates an empty sexp file in the case that the
-system is neither Linux nor MacOS. This is so that if someone deigns to build
-this on a non-Linux non-MacOS system they don't get an error about the
+system is neither Linux nor macOS. This is so that if someone deigns to build
+this on a non-Linux non-macOS system they don't get an error about the
 `library_flags.sexp` file being missing (instead they will probably get some
 sort of linker error).
 
 This is all a bit of a mess. It's awkward to construct sexp files by manually
 adding parentheses around the output of commands and adding the right level of
-escaping quotes, and the catch-all rule for non-Linux non-MacOS systems has to
+escaping quotes, and the catch-all rule for non-Linux non-macOS systems has to
 repeat the `enabled_if` conditions from the previous rules in its negation of
 them.
 
@@ -428,14 +428,14 @@ And yet cargo cannot see it.
 
 Fifteen or so minutes of confusion turned to disappointment when I learnt
 through trial and error that the `.cargo` directory wasn't being copied because
-`(source_tree ...)` silently ignores files and directories whose names begin
+`(source_tree ...)` silently ignores directories whose names begin
 with a ".". This meant that cargo didn't know to look in the `vendor` directory
 for packages. If you've been bitten by this and found this page by searching "dune
 ignores hidden files" then feel free to share your story at the github issue:
 [Hidden folders are ignored in source_tree
 dep](https://github.com/ocaml/dune/issues/7135). I fixed the problem by renaming
 the directory to `dot_cargo`. Don't be tempted to name it `_cargo` as
-`source_tree` also ignores files whose names begin with a "_". Some helpful
+`source_tree` also ignores directories whose names begin with a "_". Some helpful
 advice from the aforementioned github issue was to explicitly tell dune about
 the `.cargo` directory in a dune file. Combined with suggestions from the
 ocaml-rs book, the dune file in the Rust project (next to `Cargo.toml`) is:
@@ -444,16 +444,17 @@ ocaml-rs book, the dune file in the Rust project (next to `Cargo.toml`) is:
 (data_only_dirs vendor)
 ```
 
-These files are ignored by default to prevent dune from accidentally copying
-`.git` or `_build` into the `_build` directory, but this feels like a case of a
-tool trying to be helpful by making assumptions that turn into surprising
-behaviour when the assumptions don't hold. These types of problems tend to be
-hard to debug as the symptoms of the problem are far removed from the source of
-the problem (cargo couldn't find a dependency because I put its configuration in
-a directory whose named started with a "."). In addition it's often hard to find
-documentation or advice online for this reason. It wasn't obvious that this was
-a quirk of `(source_tree ...)` so I didn't know to check its documentation and
-even if I did, at the time of writing its documentation just says:
+Directories starting with "." and "_" are ignored by default to prevent dune
+from accidentally copying `.git` or `_build` into the `_build` directory, but
+this feels like a case of a tool trying to be helpful by making assumptions that
+turn into surprising behaviour when the assumptions don't hold. These types of
+problems tend to be hard to debug as the symptoms of the problem are far removed
+from the source of the problem (cargo couldn't find a dependency because I put
+its configuration in a directory whose named started with a "."). In addition
+it's often hard to find documentation or advice online for this reason. It
+wasn't obvious that this was a quirk of `(source_tree ...)` so I didn't know to
+check its documentation and even if I did, at the time of writing its
+documentation just says:
 
 > (`source_tree <dir>)` depends on all source files in the subtree with root `<dir>`.
 
@@ -466,6 +467,10 @@ The actual place I should have looked is in the [documentation for `(dirs
 
 > - The special value `:standard` which refers to the default set of used
 >   directories. These are the directories that don’t start with `.` or `_`.
+
+...but I only know that `dir` was related to my problem after reading solutions
+to my problem in a github issue. I only found the issue when I went to create an
+issue of my own and it was suggested as a duplicate based on the title.
 
 I find this UX anti-pattern to be pervasive in the OCaml tooling ecosystem
 which I think is why so often I'm surprised by something one of our tools does
@@ -553,7 +558,7 @@ interoperability working as it's necessary to actually make sound at all via the
 `cpal` library. A nice unintended consequence was that when I couldn't find a
 high-quality OCaml library to load .wav files I could just use a Rust library
 instead. It's no secret that there are far more people writing Rust libraries
-than OCaml libraries but since OCaml/Rust interop is so easy, we can just fill
+than OCaml libraries but since OCaml/Rust interop is so easy we can just fill
 in any gaps in our library ecosystem with Rust libraries until our own libraries
 are up to scratch.
 
