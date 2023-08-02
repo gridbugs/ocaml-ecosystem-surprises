@@ -445,14 +445,14 @@ ocaml-rs book, the dune file in the Rust project (next to `Cargo.toml`) is:
 
 These files are ignored by default to prevent dune from accidentally copying
 `.git` or `_build` into the `_build` directory, but this feels like a case of a
-tool trying to help by making assumptions that turn into surprising behaviour
-when they don't hold. These types of problems tend to be hard to debug as the
-symptoms of the problem are far removed from the source of the problem (cargo
-couldn't find a dependency because I put its configuration in a directory whose named
-started with a "."). In addition it's often hard to find documentation or advice online
-for this reason. It wasn't obvious that this was a quirk of `(source_tree ...)`
-so I didn't know to check its documentation and even if I did, at the time of
-writing its documentation just says:
+tool trying to be helpful by making assumptions that turn into surprising
+behaviour when the assumptions don't hold. These types of problems tend to be
+hard to debug as the symptoms of the problem are far removed from the source of
+the problem (cargo couldn't find a dependency because I put its configuration in
+a directory whose named started with a "."). In addition it's often hard to find
+documentation or advice online for this reason. It wasn't obvious that this was
+a quirk of `(source_tree ...)` so I didn't know to check its documentation and
+even if I did, at the time of writing its documentation just says:
 
 > (`source_tree <dir>)` depends on all source files in the subtree with root `<dir>`.
 
@@ -469,8 +469,8 @@ The actual place I should have looked is in the [documentation for `(dirs
 I find this UX anti-pattern to be pervasive in the OCaml tooling ecosystem
 which I think is why so often I'm surprised by something one of our tools does
 and why our tools tend to fail in complex, difficult to understand ways. There
-are so many special cases aimed to help you but when a special case fails and
-prevents you from doing something that should be simple I wish that the tools
+are so many special cases aimed to be helpful but when a special case fails and
+prevents me from doing something that should be simple I wish that the tools
 were dumber and failed in simpler ways which were easy to understand and fix or
 workaround.
 
@@ -519,10 +519,25 @@ match sample_size with
   | _ -> assert false
 ```
 
-My wav file uses 24-bit samples. I tried a few other wav files I had lying
-around and all failed to read for a variety of reasons. I developed
-the first version of my synthesizer library in a hackathon and I wasn't about to
-add 24-bit wav support to `mm` so I gave up and switched to Rust.
+My wav file uses 24-bit samples but I probably can't hear the difference between
+24-bit and 16-bit drum sounds so I used `ffmpeg` to downsample my .wav to
+16-bit:
+```
+$ ffmpeg -i cymbal.wav -af "aformat=s16:sample_rates=44100" cymbal-16bit.wav
+```
+
+And make sure that it worked:
+```
+$ file cymbal-16bit.wav
+cymbal-16bit.wav: RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 44100 Hz
+```
+
+And updated the code to load the new 16-bit .wav file, and its output was:
+```
+Fatal error: exception Mm_audio.Audio.IO.Invalid_file
+```
+
+So I gave up and switched to Rust.
 
 Just kidding.
 
