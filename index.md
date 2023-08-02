@@ -438,7 +438,7 @@ the directory to `dot_cargo`. Don't be tempted to name it `_cargo` as
 advice from the aforementioned github issue was to explicitly tell dune about
 the `.cargo` directory in a dune file. Combined with suggestions from the
 ocaml-rs book, the dune file in the Rust project (next to `Cargo.toml`) is:
-```
+```clojure
 (dirs :standard .cargo \ target)
 (data_only_dirs vendor)
 ```
@@ -498,7 +498,7 @@ let () =
 This prints out `sample_rate: 44100`. We're off to a good start.
 
 Let's try reading some audio samples from the file:
-```
+```ocaml
 let () =
   let wav_file = new Mm.Audio.IO.Reader.of_wav_file "./cymbal.wav" in
   let buffer = Mm.Audio.create 2 10000
