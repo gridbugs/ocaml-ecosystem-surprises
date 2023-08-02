@@ -429,7 +429,8 @@ And yet cargo cannot see it.
 Fifteen or so minutes of confusion turned to disappointment when I learnt
 through trial and error that the `.cargo` directory wasn't being copied because
 `(source_tree ...)` silently ignores files and directories whose names begin
-with a ".". If you've been bitten by this and found this page by searching "dune
+with a ".". This meant that cargo didn't know to look in the `vendor` directory
+for packages. If you've been bitten by this and found this page by searching "dune
 ignores hidden files" then feel free to share your story at the github issue:
 [Hidden folders are ignored in source_tree
 dep](https://github.com/ocaml/dune/issues/7135). I fixed the problem by renaming
