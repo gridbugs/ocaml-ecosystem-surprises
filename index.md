@@ -429,12 +429,12 @@ And yet cargo cannot see it.
 Fifteen or so minutes of confusion turned to disappointment when I learnt
 through trial and error that the `.cargo` directory wasn't being copied because
 `(source_tree ...)` silently ignores files and directories whose names begin
-with a `.`. If you've been bitten by this and found this page by searching "dune
+with a ".". If you've been bitten by this and found this page by searching "dune
 ignores hidden files" then feel free to share your story at the github issue:
 [Hidden folders are ignored in source_tree
 dep](https://github.com/ocaml/dune/issues/7135). I fixed the problem by renaming
 the directory to `dot_cargo`. Don't be tempted to name it `_cargo` as
-`source_tree` also ignores files whose names begin with a `_`. Some helpful
+`source_tree` also ignores files whose names begin with a "_". Some helpful
 advice from the aforementioned github issue was to explicitly tell dune about
 the `.cargo` directory in a dune file. Combined with suggestions from the
 ocaml-rs book, the dune file in the Rust project (next to `Cargo.toml`) is:
@@ -449,7 +449,7 @@ tool trying to help by making assumptions that turn into surprising behaviour
 when they don't hold. These types of problems tend to be hard to debug as the
 symptoms of the problem are far removed from the source of the problem (cargo
 couldn't find a dependency because I put its configuration in a directory whose named
-started with a `.`). In addition it's often hard to find documentation or advice online
+started with a "."). In addition it's often hard to find documentation or advice online
 for this reason. It wasn't obvious that this was a quirk of `(source_tree ...)`
 so I didn't know to check its documentation and even if I did, at the time of
 writing its documentation just says:
