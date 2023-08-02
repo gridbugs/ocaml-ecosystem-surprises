@@ -1,22 +1,26 @@
-# OCaml Ecosystem Surprises
+planning notes, etc:
 
 - linking against native libraries
-- os-specific linker arguments
+  - os-specific linker arguments
+- rust interop is easy!
+  - but ocaml5 doesn't work (yet)
+  - dune sourcetree ignores directories begining with "." and every rust project will need a .config directory to be released with opam
 - inline testing
 - loading a wav file with mm
-- ocaml-rs doesn't support ocaml5
-- ocaml-rs float32 arrays are broken
+  - easier to do this in rust
+  - ocaml-rs float32 arrays are broken
 - opam install and opam pin don't handle local packages in some cases
-- dune sourcetree ignores directories begining with "."
+
+post starts here:
 
 I recently made my first non-trivial OCaml project - a synthesizer library
 called [llama](https://github.com/gridbugs/llama/). It's made up of multiple
 Opam packages, it links against native code, it calls into code in a foreign
 language (Rust), it's (somewhat!) documented, it works on MacOS and Linux, it's
-released to the Opam repository. The language ecosystem I've spent the most time
+released to the Opam repository. Non-trivial! The language ecosystem I've spent the most time
 in is Rust/Cargo and as such I'm accustomed to things "just working". This is a
 post about the times while developing my library that I was surprised or
-confused or frustrated by something in the OCaml ecosystem.
+confused or frustrated by something in the OCaml ecosystem that didn't "just work".
 
 ## Linking Against Native Libraries
 
@@ -28,7 +32,7 @@ via a small Rust library that uses
 [`ocaml-rs`'s docs](https://zshipko.github.io/ocaml-rs/).
 
 My dune file looked like this:
-```
+```clojure
 (library
  (name llama_low_level)
  (foreign_archives low_level)
@@ -43,7 +47,7 @@ $ dune build
 Error: No rule found for dlllow_level.so
 ```
 
-I only have a static archive of the Rust library - not a shared object (.so)
+I only have a static archive (.a) of the Rust library - not a shared object (.so)
 file. Searching the [dune (library ...) stanza
 documentation](https://dune.readthedocs.io/en/stable/dune-files.html#library)
 for the word "dynamic" I found:
@@ -51,10 +55,9 @@ for the word "dynamic" I found:
 > `(no_dynlink)` disables dynamic linking of the library. This is for advanced use
 > only. By default, you shouldn’t set this option.
 
-That's a bit of a scary looking message as this doesn't feel like I'm trying to
-do anything too advanced but it does seem to fix the problem:
+A bit of a scary looking message - my use case doesn't seem too advanced. Adding `(no_dynlink)` does seem to fix the problem:
 
-```
+```clojure
 (library
  (name llama_low_level)
  (no_dynlink)
@@ -66,13 +69,13 @@ do anything too advanced but it does seem to fix the problem:
 Next I made a small executable to test calling a function in the
 `llama_low_level` library:
 
-```
+```clojure
 (executable
  (public_name experiment)
  (libraries llama_low_level))
 ```
 
-Building this caused my terminal filled with errors. Here's the start of the
+Building this caused my terminal to fill with errors. Here's the start of the
 long error message:
 ```
 $ dune build
@@ -85,7 +88,7 @@ Undefined symbols for architecture arm64:
 ```
 
 Searching for "AudioComponentFindNext" led me to some Apple developer docs for
-the `AudioToolbox` framework. So foreign archive must depend on some frameworks
+the `AudioToolbox` framework. So the foreign archive must depend on some frameworks
 on MacOS for doing "audio stuff" and I need to tell the linker about it.
 Eventually I found the appropriate linker flags on stack overflow to copy/paste
 into my project:
@@ -100,26 +103,29 @@ could pass them to the linker via `clang`:
 clang foo.c -Wl,-framework,CoreServices,-framework,CoreAudio,-framework,AudioUnit,-framework,AudioToolbox
 ```
 
+The `-Wl` flag tells clang to pass its argument to the linker. I need to find out how to do this in dune/OCaml.
+
 Reading through `dune`'s library docs again and there's this field:
 > `(library_flags (<flags>))` is a list of flags passed to ocamlc and ocamlopt
 > when building the library archive files.
 
-Sounds promising. Now we need a way to get `ocamlc` to pass custom flags to the
-linker. `man ocamlc` contains:
-```
--cclib -llibname
-       Pass the -llibname option to the C linker when linking in "custom runtime"
-       mode  (see  the  -custom  option).  This  causes the given C library to be
-       linked with the program.
+Sounds promising. Now I need a way to get `ocamlc` to pass custom flags to the
+linker. `man ocamlc` gives two condenders:
 
--ccopt option
-       Pass the given option to the C compiler and linker, when linking in  "cus‐
-       tom  runtime"  mode  (see  the -custom option). For instance, -ccopt -Ldir
-       causes the C linker to search for C libraries in directory dir.
-```
+> -cclib -llibname
+>
+> Pass the -llibname option to the C linker when linking in "custom runtime"
+> mode  (see  the  -custom  option).  This  causes the given C library to be
+>linked with the program.
+>
+> -ccopt option
+>
+> Pass the given option to the C compiler and linker, when linking in  "custom  runtime"  mode  (see  the -custom option). For instance, -ccopt -Ldir
+> causes the C linker to search for C libraries in directory dir.
+
 
 Putting these together:
-```
+```clojure
 (library
  (name llama_low_level)
  (no_dynlink)
@@ -138,7 +144,7 @@ names but it's not documented what happens if you pass it something other than
 I later found out that you can avoid passing `-ccopt` before each linker
 argument by putting the linker arguments in quotes:
 
-```
+```clojure
 (library_flags
  (-ccopt "-framework CoreServices -framework CoreAudio -framework AudioUnit -framework AudioToolbox))
 ```
@@ -164,7 +170,7 @@ file. I take the fact this this does work to mean that when the docs for
 `(no_dynlink)` say "disables dynamic linking of the library", they are just
 referring to how the OCaml library links against the libraries listed in
 `(foreign archives ...)` (for us this is just "low_level") - not libraries
-explicitly passed to the linker.
+explicitly passed to the linker (such as `asound`).
 
 On Linux I need to generate the linker flags from a command rather than
 hard-coding them in the dune file. The only way to do this in dune is to
@@ -174,7 +180,7 @@ arguments and then using dune's `:include` keyword to load a list of arguments
 from the file.
 
 So I need to generate a file with the following contexts:
-```
+```clojure
 ("-cclib" "-L/nix/store/qnf36msgsjh17sy9dakvqnvv7sgr8dfg-alsa-lib-1.2.9/lib -lasound")
 ```
 Note the opening and closing parentheses. These are required as the file must
@@ -183,7 +189,7 @@ doesn't work. I guess because we are passing the name of a library to link
 against?
 
 To generate this file we can use a dune rule:
-```
+```clojure
 (rule
  (action
   (with-stdout-to
@@ -208,14 +214,14 @@ MacOS-specific linker flags and replaced them with the Linux ones. To work in
 general (well just on MacOS and Linux) we can use dune's `(enabled_if ...)`
 field to use a different rule to generate `library_flags.sexp` on MacOS.
 
-```
+```clojure
 (rule
  (enabled_if
   (= %{system} macosx))
  (action
   (write-file
    library_flags.sexp
-   "(\"-cclib\" \"-framework CoreServices -framework CoreAudio -framework AudioUnit -framework AudioToolbox\")")))
+   "(\"-ccopt\" \"-framework CoreServices -framework CoreAudio -framework AudioUnit -framework AudioToolbox\")")))
 
 (rule
  (enabled_if
@@ -298,7 +304,7 @@ let () =
 
 This goes into a file `discover.ml` in a separate directory from the `low_level`
 library's files, and it's got a dune file which just builds an executable:
-```
+```clojure
 (executable
  (name discover)
  (libraries dune-configurator))
@@ -306,7 +312,7 @@ library's files, and it's got a dune file which just builds an executable:
 
 Now the dune file for `low_level` can run `discover.exe` in a single rule rather
 than having a separate rule for each system:
-```
+```clojure
 (rule
  (target library_flags.sexp)
  (action
