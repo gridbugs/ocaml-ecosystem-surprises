@@ -557,7 +557,7 @@ than OCaml libraries but since OCaml/Rust interop is so easy, we can just fill
 in any gaps in our library ecosystem with Rust libraries until our own libraries
 are up to scratch.
 
-One interesting bug I ran into copying audio samples into an OCaml array.
+I ran into an interesting bug while copying audio samples into an OCaml array.
 Currently if you have a Rust function that returns an array of 32-bit floats:
 ```rust
 #[ocaml::func]
