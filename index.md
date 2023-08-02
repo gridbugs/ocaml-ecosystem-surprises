@@ -312,7 +312,6 @@ than having a separate rule for each system:
 
 (library
  (name llama_low_level)
- (public_name llama.low_level)
  (no_dynlink)
  (foreign_archives low_level)
  (c_library_flags
