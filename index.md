@@ -13,8 +13,10 @@ with it because I love programming in OCaml. I also love programming in Rust and
 use it for many personal projects. My comparisons between OCaml and Rust are
 mostly facetious. I know there are more people working on Rust than OCaml and it
 has momentum on its side being relatively young and cool. It makes different
-trade-offs and has plenty of problems of its own. The opinions I express here
-are my own and not those of Tarides or the (other) dune developers.
+trade-offs and has plenty of problems of its own.
+
+The opinions I express here are my own and not those of Tarides or the (other)
+dune developers.
 
 ## Linking Against Native Libraries
 
