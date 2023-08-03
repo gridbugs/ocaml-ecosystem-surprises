@@ -1,18 +1,3 @@
-planning notes, etc:
-
-- linking against native libraries
-  - os-specific linker arguments
-- rust interop is easy!
-  - but ocaml5 doesn't work (yet)
-  - dune sourcetree ignores directories begining with "." and every rust project will need a .config directory to be released with opam
-- inline testing
-- loading a wav file with mm
-  - easier to do this in rust
-  - ocaml-rs float32 arrays are broken
-- opam install and opam pin don't handle local packages in some cases
-
-post starts here:
-
 I recently made my first non-trivial OCaml project - a synthesizer library
 called [llama](https://github.com/gridbugs/llama/). It's made up of multiple
 Opam packages, it links against native code, it calls into code in a foreign
