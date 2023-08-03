@@ -584,7 +584,7 @@ time of writing I have an open PR to fix this bug.
 
 My synthesizer library can decode MIDI both from files and external devices. I
 elected to write my own MIDI parser rather than use the one from `mm`. Fool me
-once, etc, and besides, parsing MIDI is pretty straightforward. The most
+once, etc., and besides, parsing MIDI is pretty straightforward. The most
 complicated part is probably "Variable Length Quantities" - an encoding for
 integers where the most-significant bit of each byte is used to mark the final
 byte of the integer. Kind of like C strings but for integers.
@@ -620,7 +620,7 @@ possible to mark the package as `with-test`:
 ```
 
 This is useful since normal users of a package probably don't want to install
-the package's test-only dependencies, but when developing the package or in its
+the package's test-only dependencies, but when developing the package or in
 CI you can install the package with `opam install <package> --with-test` to
 install its test-only dependencies along with its regular dependencies.
 
@@ -633,12 +633,12 @@ File "test/dune", line 6, characters 7-22:
 Error: Library "ppx_inline_test" not found.
 ```
 OK that's true, I don't have `ppx_inline_test` installed but I'm also not trying
-to run my tests so what's going on here.
+to run my tests so what's going on here?
 
 It turns out that packages that do pre-processing like `ppx_inline_test` cannot
 be marked as `with-test`; they must be unconditional dependencies. This is
 because preprocessor directives like `let%test` are not valid OCaml syntax, and
-neither the OCaml compiler, nor dune, are able to parse the files until
+the OCaml compiler is unable to parse the files until
 _something_ has gone through and removed all the preprocessor directives.
 
 Of course I _could_ just add `ppx_inline_test` as an unconditional dependency but
@@ -714,5 +714,5 @@ APIs. While this may be true, I can't help but feel like this extra barrier to
 testing will have the effect of people writing fewer tests. Dune already has a
 higher barrier for testing than cargo since you have to explicitly enable inline
 tests in the dune file of the library under tests and install `ppx_inline_test`.
-In rust if I have a _passing curiosity_ about whether my code works in some case
+In Rust if I have a _passing curiosity_ about whether my code works in some case
 all I have to do is add a function tagged with `#[test]` and run `cargo test`.
