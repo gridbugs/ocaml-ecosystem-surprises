@@ -7,12 +7,13 @@ in is Rust/Cargo and as such I'm accustomed to things "just working". This is a
 post about the times while developing my library that I was surprised or
 confused or frustrated by something in the OCaml ecosystem that didn't "just work".
 
-Before we get into it do I need to point out that my day job is working on the dune
-build system. Despite being frustrated with the tooling at times I put up with
-it because I love programming in OCaml. I also love programming in Rust and use it
-for many personal projects. My comparisons between OCaml and Rust are mostly
-facetious. I know there are more people working on Rust than OCaml and it has
-momentum on its side being relatively young and cool. The opinions I express here
+Before we get into it do I need to point out that my day job is working on the
+dune build system. Despite being frustrated with the tooling at times I put up
+with it because I love programming in OCaml. I also love programming in Rust and
+use it for many personal projects. My comparisons between OCaml and Rust are
+mostly facetious. I know there are more people working on Rust than OCaml and it
+has momentum on its side being relatively young and cool. It makes different
+trade-offs and has plenty of problems of its own. The opinions I express here
 are my own and not those of Tarides or the (other) dune developers.
 
 ## Linking Against Native Libraries
