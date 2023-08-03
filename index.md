@@ -716,3 +716,140 @@ higher barrier for testing than cargo since you have to explicitly enable inline
 tests in the dune file of the library under tests and install `ppx_inline_test`.
 In Rust if I have a _passing curiosity_ about whether my code works in some case
 all I have to do is add a function tagged with `#[test]` and run `cargo test`.
+
+## Local Packages and Opam
+
+My synthesizer project is made up of several interdependent Opam packages in a
+single git repo. Opam has a feature where if you run `opam install .` in a
+directory containing one or more .opam files it will install the packages they
+describe along with their dependencies. If you just want the dependencies
+installed and not the local packages themselves you can run `opam install .
+--deps-only`. This is a handy command for installing the dependencies of a
+project you intend to work on.
+
+I recently tried setting up my synth project on a new machine. After a fresh
+clone of the git repo in a fresh Opam switch, I ran:
+```
+$ opam install . --deps-only
+[ERROR] Package conflict!
+  * Missing dependency:
+    - llama_midi >= 0.0.1
+    no matching version
+
+No solution found, exiting
+```
+
+`llama_midi.opam` was definitely present. Another command, `opam pin .` is kind
+of like `opam install . --deps-only` except it also marks any local packages
+(.opam files in the current directory) as being local and won't try to install
+them from the Opam repository. That must be my problem:
+```
+$ opam pin .
+This will pin the following packages: llama, llama_core, llama_interactive,
+llama_midi, llama_tests. Continue? [Y/n]
+```
+Sounds promising...
+```
+llama_midi, llama_tests. Continue? [Y/n] Y
+Processing  3/5: [llama: git] [llama_core: git] [llama_interactive: git]
+llama is now pinned to git+file:///.../llama#main (version 0.0.1)
+llama_core is now pinned to git+file:///.../llama#main (version 0.0.1)
+llama_interactive is now pinned to git+file:///.../llama#main (version 0.0.1)
+Package llama_midi does not exist, create as a NEW package? [Y/n]
+```
+So far so good...
+```
+Package llama_midi does not exist, create as a NEW package? [Y/n] Y
+llama_midi is now pinned to git+file:///.../llama#main (version ~dev)
+Package llama_tests does not exist, create as a NEW package? [Y/n] Y
+llama_tests is now pinned to git+file:///.../llama#main (version ~dev)
+```
+And...
+```
+[ERROR] Package conflict!
+  * Missing dependency:
+    - llama_midi >= 0.0.1
+    no matching version
+
+[NOTE] Pinning command successful, but your installed packages may be out of sync.
+```
+Same problem as before, although now it prints "Pinning command successful" as
+if to taunt me when it very clearly did not work.
+
+I stared at this for a little while before I noticed that the `llama`,
+`llama_core` and `llama_interactive` packages were all version `0.0.1` while
+`llama_midi` and `llama_tests` are version `~dev`. In Opam, you don't mark local
+.opam files as representing a particular version of a package. The only place
+where version numbers of packages are recorded is the Opam package repository.
+So in order to know about version `0.0.1` it must be checking the versions of
+those packages in the Opam repo.
+
+At the time, only `llama`, `llama_core` and `llama_interactive` had been
+released to the Opam repository. `llama_midi` was a new package that had been
+added since the most-recent release of the llama packages and it's now a
+dependency of the `llama_core` package:
+```
+depends: [
+   ...
+  "llama_midi" {= version}
+]
+```
+
+In a classic Jar Jar move, Opam checked whether each of the local packages had
+also been released to the Opam repo and for the ones that had, it acted like the
+local packages had the version numbers corresponding to the latest releases for
+the purposes of solving dependencies. This meant that while resolving the
+dependencies of `llama_core` version `0.0.1` it tried to find `llama_midi`
+version `0.0.1` since the `llama_midi {= version}` in `llama_core`'s dependencies means
+the version of `llama_midi` which is the same as the installed version of
+`llama_core`.
+
+We can get Opam to stop trying to be all helpful about package versions by using
+the `--with-version` option to force a particular version of all the packages it
+pins. Since they'll all be given the same fictional version, you can pass
+whatever you like to that argument:
+```
+opam pin . --with-version sigh
+```
+
+This still doesn't work.
+
+```
+#=== ERROR while compiling llama.sigh =========================================#
+# context     2.1.5 | macos/arm64 | ocaml-base-compiler.4.14.1 | pinned(git+file:///.../llama#main#06deea42efa6b84653be43529daf8aa08dc106
+68)
+# path        .../_opam/.opam-switch/build/llama.sigh
+# command     ~/.opam/opam-init/hooks/sandbox.sh build dune build -p llama -j 7 @install
+# exit-code   1
+# env-file    ~/.opam/log/llama-60822-042f19.env
+# output-file ~/.opam/log/llama-60822-042f19.out
+### output ###
+# error: failed to get `anyhow` as a dependency of package `low_level v0.1.0 (.../_opam/.opam-switch/build/llama.sigh/_build/default/src
+/low-level/low-level-rust)`
+# [...]
+# Caused by:
+#   failed to query replaced source registry `crates-io`
+#
+# Caused by:
+#   download of config.json failed
+#
+# Caused by:
+#   failed to download from `https://index.crates.io/config.json`
+#
+# Caused by:
+#   [7] Couldn't connect to server (Failed to connect to index.crates.io port 443 a
+fter 0 ms: Couldn't connect to server)
+```
+
+It tried to build the  `llama` package in the Opam sandbox (with no internet
+access, remember) and obviously this doesn't work when building the package from
+the repo as I don't check-in the Rust dependencies. Building the rust component
+meant that cargo tried to download them.
+
+Unlike `opam install . --deps-only`, the `opam pin .` command also installs the
+local packages - not just their dependencies. There is no `--deps-only` flag for
+`opam pin` and no `--with-version` for `opam install` so as far as I can tell
+there's actually no way to just install the dependencies of local packages
+when you have some unreleased local dependencies.
+
+I guess I just have to wait until `llama_midi` gets released.
