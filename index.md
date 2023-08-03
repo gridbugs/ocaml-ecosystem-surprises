@@ -579,3 +579,140 @@ behaviour works as expected, but indexing it with `Array.get` always returns
 `0.0`. In some cases arrays of floats in OCaml are represented in a special
 format but `ocaml-rs` was only converting 64-bit floats into this format. At the
 time of writing I have an open PR to fix this bug.
+
+## Inline Testing
+
+My synthesizer library can decode MIDI both from files and external devices. I
+elected to write my own MIDI parser rather than use the one from `mm`. Fool me
+once, etc, and besides, parsing MIDI is pretty straightforward. The most
+complicated part is probably "Variable Length Quantities" - an encoding for
+integers where the most-significant bit of each byte is used to mark the final
+byte of the integer. Kind of like C strings but for integers.
+
+To check my understanding of the MIDI spec I wrote some tests:
+```ocaml
+let variable_length_quantity a i = (* Parse a variable length quantity. *)
+
+let%test_module _ =
+  (module struct
+    (* Run the parser on an array of ints. *)
+    let make ints =
+      run variable_length_quantity (Array.map char_of_int (Array.of_list ints))
+
+    let%test _ = Int.equal 0 @@ make [ 0 ]
+    let%test _ = Int.equal 0x40 @@ make [ 0x40 ]
+    let%test _ = Int.equal 0x2000 @@ make [ 0xC0; 0x00 ]
+    let%test _ = Int.equal 0x1FFFFF @@ make [ 0xFF; 0xFF; 0x7F ]
+    let%test _ = Int.equal 0x200000 @@ make [ 0x81; 0x80; 0x80; 0x00 ]
+    let%test _ = Int.equal 0xFFFFFFF @@ make [ 0xFF; 0xFF; 0xFF; 0x7F ]
+  end)
+```
+
+I based this off dune's [documentation for inline
+tests](https://dune.readthedocs.io/en/stable/tests.html#inline-tests) and it
+worked well. I can run my tests with `dune test`. Tests are written using the
+`ppx_inline_test` package.
+
+In Opam when you depend on a package that you only need for testing it's
+possible to mark the package as `with-test`:
+```
+  "ppx_inline_test" {with-test}
+```
+
+This is useful since normal users of a package probably don't want to install
+the package's test-only dependencies, but when developing the package or in its
+CI you can install the package with `opam install <package> --with-test` to
+install its test-only dependencies along with its regular dependencies.
+
+To experiment with this feature I tried installing my library on without passing
+`--with-test`:
+```
+File "test/dune", line 6, characters 7-22:
+6 |   (pps ppx_inline_test))
+           ^^^^^^^^^^^^^^^
+Error: Library "ppx_inline_test" not found.
+```
+OK that's true, I don't have `ppx_inline_test` installed but I'm also not trying
+to run my tests so what's going on here.
+
+It turns out that packages that do pre-processing like `ppx_inline_test` cannot
+be marked as `with-test`; they must be unconditional dependencies. This is
+because preprocessor directives like `let%test` are not valid OCaml syntax, and
+neither the OCaml compiler, nor dune, are able to parse the files until
+_something_ has gone through and removed all the preprocessor directives.
+
+Of course I _could_ just add `ppx_inline_test` as an unconditional dependency but
+it seems like a shame since my MIDI library has no dependencies besides `ocaml`
+and `dune`. `ppx_inline_test` has many dependencies of its own, so adding it
+unconditionally to my MIDI library would actually be adding dependencies on:
+```
+base
+csexp
+dune-configurator
+jane-street-headers
+jst-config
+ocaml-compiler-libs
+ppx_assert
+ppx_base
+ppx_cold
+ppx_compare
+ppx_derivers
+ppx_enumerate
+ppx_globalize
+ppx_hash
+ppx_here
+ppx_inline_test
+ppx_optcomp
+ppx_sexp_conv
+ppxlib
+sexplib0
+stdio
+stdlib-shims
+time_now
+```
+
+Anyone using my MIDI library would now have to install all of those packages.
+
+This came as a bit of a shock since I've been spoiled by Rust where I can do:
+```rust
+fn some_function() { ... }
+
+#[test]
+fn test_of_some_function() { ... }
+```
+...and the tests will only be compiled when running `cargo test`. I can add
+test-only dependencies in Rust but they are only installed when someone goes to
+run the tests. I can depend on test-only preprocessors from external libraries
+without users of my libraries having to know or care.
+
+The recommended workaround for OCaml is to publicly expose all internal APIs you
+want to test with `ppx_inline_test` and perform the tests in a different package
+which depends on `ppx_inline_test`.
+
+In my case I needed to expose the internal parser used in the MIDI library:
+```ocaml
+module For_test : sig
+  module Byte_array_parser : sig
+    include module type of struct
+      include Byte_array_parser
+    end
+  end
+end
+```
+
+I put it inside a new module `For_test` whose name is meant to scare users away
+like the stripes on a poisonous snake. I'm only exposing this API for tests and
+if you use it your code will probably break without warning.
+
+Then in a new package which I named `llama_tests` and will never release to
+Opam, I depend on both my MIDI package and `ppx_inline_test`, and I moved the
+tests there.
+
+I've been told that forcing developers to expose private APIs for testing
+purposes encourages them to think more about how they structure their private
+APIs. While this may be true, I can't help but feel like this extra barrier to
+testing will have the effect of people writing fewer tests. Dune already has a
+higher barrier for testing than cargo since you have to explicitly enable inline
+tests in the dune file of the library under tests and install `ppx_inline_test`.
+In rust if I have a _passing curiosity_ about whether my code works in some case
+all I have to do is add a function tagged with `#[test]` and run `cargo test`.
