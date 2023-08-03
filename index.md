@@ -7,6 +7,14 @@ in is Rust/Cargo and as such I'm accustomed to things "just working". This is a
 post about the times while developing my library that I was surprised or
 confused or frustrated by something in the OCaml ecosystem that didn't "just work".
 
+Before we get into it do I need to point out that my day job is working on the dune
+build system. Despite being frustrated with the tooling at times I put up with
+it because I love programming in OCaml. I also love programming in Rust and use it
+for many personal projects. My comparisons between OCaml and Rust are mostly
+facetious. I know there are more people working on Rust than OCaml and it has
+momentum on its side being relatively young and hip. The opinions I express here
+are my own and not those of Tarides or the (other) dune developers.
+
 ## Linking Against Native Libraries
 
 My library makes noise by sending samples to the sound card
@@ -725,7 +733,7 @@ No solution found, exiting
 ```
 
 `llama_midi.opam` was definitely present. Another command, `opam pin .` is kind
-of like `opam install . --deps-only` except it also marks any local packages
+of like `opam install .` except it also marks any local packages
 (.opam files in the current directory) as being local and won't try to install
 them from the Opam repository. That must be my problem:
 ```
@@ -785,9 +793,9 @@ also been released to the Opam repo and for the ones that had, it acted like the
 local packages had the version numbers corresponding to the latest releases for
 the purposes of solving dependencies. This meant that while resolving the
 dependencies of `llama_core` version `0.0.1` it tried to find `llama_midi`
-version `0.0.1` since the `llama_midi {= version}` in `llama_core`'s dependencies means
-the version of `llama_midi` which is the same as the installed version of
-`llama_core`.
+version `0.0.1` (which does not exist) since the `llama_midi {= version}` in
+`llama_core`'s dependencies means the version of `llama_midi` which is the same
+as the installed version of `llama_core`.
 
 We can get Opam to stop trying to be all helpful about package versions by using
 the `--with-version` option to force a particular version of all the packages it
@@ -799,11 +807,13 @@ opam pin . --with-version sigh
 
 This still doesn't work.
 
+It installed dependencies, but it fails to build `llama`'s rust dependencies:
+
 ```
 #=== ERROR while compiling llama.sigh =========================================#
 # context     2.1.5 | macos/arm64 | ocaml-base-compiler.4.14.1 | pinned(git+file:///.../llama#main#06deea42efa6b84653be43529daf8aa08dc106
 68)
-# path        .../_opam/.opam-switch/build/llama.sigh
+# path        /.../_opam/.opam-switch/build/llama.sigh
 # command     ~/.opam/opam-init/hooks/sandbox.sh build dune build -p llama -j 7 @install
 # exit-code   1
 # env-file    ~/.opam/log/llama-60822-042f19.env
@@ -828,13 +838,21 @@ fter 0 ms: Couldn't connect to server)
 
 It tried to build the  `llama` package in the Opam sandbox (with no internet
 access, remember) and obviously this doesn't work when building the package from
-the repo as I don't check-in the Rust dependencies. Building the rust component
-meant that cargo tried to download them.
+the repo as I don't check-in the vendored Rust dependencies. Building the rust
+component meant that cargo tried to download them but couldn't due to no
+internet access in the Opam sandbox.
 
-Unlike `opam install . --deps-only`, the `opam pin .` command also installs the
-local packages - not just their dependencies. There is no `--deps-only` flag for
-`opam pin` and no `--with-version` for `opam install` so as far as I can tell
-there's actually no way to just install the dependencies of local packages
-when you have some unreleased local dependencies.
+I don't even want to build or install the `llama` package though! Unlike `opam
+install . --deps-only`, the `opam pin .` command also installs the local
+packages - not just their dependencies. There is no `--deps-only` flag for `opam
+pin` and no `--with-version` for `opam install` so as far as I can tell there's
+actually no way to just install the dependencies of local packages when you have
+some unreleased local dependencies.
 
 I guess I just have to wait until `llama_midi` gets released.
+
+The experience of setting up dependencies of a fresh clone of a project is
+actually something that is set to improve with an upcoming dune feature. Dune is
+getting support for package management and lockfiles so pretty soon it will be a
+single `dune` command to install and build all the dependencies of an OCaml
+project.
