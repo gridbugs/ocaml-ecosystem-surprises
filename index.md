@@ -705,13 +705,14 @@ Then in a new package which I named `llama_tests` and will never release to
 Opam, I depend on both my MIDI package and `ppx_inline_test`, and I moved the
 tests there.
 
-I've been told that forcing developers to expose private APIs for testing
+I've been told that requiring developers to expose private APIs for testing
 purposes encourages them to think more about how they structure their private
-APIs. While this may be true, I can't help but feel like this extra barrier to
-testing will have the effect of people writing fewer tests. Dune already has a
-higher barrier for testing than cargo since you have to explicitly enable inline
-tests in the dune file of the library under tests and install `ppx_inline_test`.
-In Rust if I have a _passing curiosity_ about whether my code works in some case
+APIs. This may be true but I can't help but feel like this extra barrier to
+testing will also have the practical effect of (possibly subconsciously)
+reducing the number of tests that get written. Dune already has a higher
+barrier for testing than cargo since you have to explicitly enable inline tests
+in the dune file of the library under test and install `ppx_inline_test`. In
+Rust if I have a _passing curiosity_ about whether my code works in some case
 all I have to do is add a function tagged with `#[test]` and run `cargo test`.
 
 ## Local Packages and Opam
