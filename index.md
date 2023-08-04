@@ -1,14 +1,14 @@
 I recently made my first non-trivial OCaml project - a synthesizer library
 called [llama](https://github.com/gridbugs/llama/). It's made up of multiple
-Opam packages, it links against native code, it calls into code in a foreign
+opam packages, it links against native code, it calls into code in a foreign
 language (Rust), it's (somewhat!) documented, it works on macOS and Linux, it's
-released to the Opam repository. Non-trivial! The language ecosystem I've spent the most time
+released to the opam repository. Non-trivial! The language ecosystem I've spent the most time
 in is Rust/Cargo and as such I'm accustomed to things "just working". This is a
 post about the times while developing my library that I was surprised or
 confused or frustrated by something in the OCaml ecosystem that didn't "just work".
 
 Before we get into it do I need to point out that my day job is working on the
-dune build system. Despite being frustrated with the tooling at times I put up
+Dune build system. Despite being frustrated with the tooling at times I put up
 with it because I love programming in OCaml. I also love programming in Rust and
 use it for many personal projects. My comparisons between OCaml and Rust are
 mostly facetious. I know there are more people working on Rust than OCaml and it
@@ -365,11 +365,11 @@ contains a regular old cargo project (ie. it has a `Cargo.toml` file and a
 There's lots more information about interoperability between OCaml and Rust in
 the [ocaml-rs book](https://zshipko.github.io/ocaml-rs/).
 
-I intended to release my library on Opam and one caveat of releasing packages
-with a Rust component to Opam is that the sandbox environment used to build Opam
+I intended to release my library on opam and one caveat of releasing packages
+with a Rust component to opam is that the sandbox environment used to build opam
 packages does not have internet access, and building a Rust project typically
 involves downloading dependencies. To get around this, the source tarball
-refered to in the Opam package's manifest must already include all the Rust code
+refered to in the opam package's manifest must already include all the Rust code
 needed to build the project. Setting this up is easy - run `cargo vendor` in the
 Rust project to create a `vendor` directory containing the code for all the
 project's dependencies. The command also prints some instructions for building
@@ -388,7 +388,7 @@ directory = "vendor"
 So I went ahead and created the file low-level-rust/.cargo/config.toml after
 vendoring all my dependencies, and to make sure that no dependencies were being
 clandestinely downloaded I replaced `run cargo build --release` with
-`run cargo build --release --offline` in the dune file, and also removed all my
+`run cargo build --release --offline` in the `dune` file, and also removed all my
 cached cargo packages by running `cargo cache --remove-dir all`.
 
 ```
@@ -465,7 +465,7 @@ The actual place I should have looked is in the [documentation for `(dirs
 >   directories. These are the directories that don’t start with `.` or `_`.
 
 ...but I only know that `dir` was related to my problem after reading solutions
-to my problem in a github issue. I only found the issue when I went to create an
+to my problem in a GitHub issue. I only found the issue when I went to create an
 issue of my own and it was suggested as a duplicate based on the title.
 
 I find this UX anti-pattern to be pervasive in the OCaml tooling ecosystem
@@ -534,7 +534,7 @@ $ file cymbal-16bit.wav
 cymbal-16bit.wav: RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 44100 Hz
 ```
 
-And updated the code to load the new 16-bit .wav file, and its output was:
+And updated the code to load the new 16-bit `.wav` file, and its output was:
 ```
 Fatal error: exception Mm_audio.Audio.IO.Invalid_file
 ```
@@ -552,7 +552,7 @@ reads a .wav file and copies the contained audio samples into an OCaml array.
 The first thing I did when I started this project was getting the Rust
 interoperability working as it's necessary to actually make sound at all via the
 `cpal` library. A nice unintended consequence was that when I couldn't find a
-high-quality OCaml library to load .wav files I could just use a Rust library
+high-quality OCaml library to load `.wav` files I could just use a Rust library
 instead. It's no secret that there are far more people writing Rust libraries
 than OCaml libraries but since OCaml/Rust interop is so easy we can just fill
 in any gaps in our library ecosystem with Rust libraries until our own libraries
@@ -810,7 +810,7 @@ opam pin . --with-version sigh
 
 This still doesn't work.
 
-It installed dependencies, but it fails to build `llama`'s rust dependencies:
+It installed dependencies, but it fails to build `llama`'s Rust dependencies:
 
 ```
 #=== ERROR while compiling llama.sigh =========================================#
@@ -842,10 +842,10 @@ fter 0 ms: Couldn't connect to server)
 It tried to build the  `llama` package in the Opam sandbox (with no internet
 access, remember) and obviously this doesn't work when building the package from
 the repo as I don't check-in the vendored Rust dependencies. Building the rust
-component meant that cargo tried to download them but couldn't due to no
+component meant that cargo tried to download dependencies but couldn't due to the lack of
 internet access in the Opam sandbox.
 
-I don't even want to build or install the `llama` package though! Unlike `opam
+I don't even want to build or install the `llama` package though - just its dependencies! Unlike `opam
 install . --deps-only`, the `opam pin .` command also installs the local
 packages - not just their dependencies. There is no `--deps-only` flag for `opam
 pin` and no `--with-version` for `opam install` so as far as I can tell there's
