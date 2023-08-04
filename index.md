@@ -483,14 +483,14 @@ backfire in ways that make the situation worse. It's also a play on the word
 
 But I digress.
 
-## Adventures Trying to Read a .wav File
+## Adventures Trying to Read a `.wav` File
 
-I wanted the ability to load and play .wav files in my synthesizer library. I'd
+I wanted the ability to load and play `.wav` files in my synthesizer library. I'd
 been interested in checking out the
 [ocaml-mm](https://github.com/savonet/ocaml-mm) multimedia library for a while
 and this seemed like a good time. I got my hands on some old-school drum samples
 that I wanted to use for my synth, and made a little program that used `mm` to
-read a .wav file:
+read a `.wav` file:
 ```ocaml
 let () =
   let wav_file = new Mm.Audio.IO.Reader.of_wav_file "./cymbal.wav" in
@@ -522,7 +522,7 @@ match sample_size with
 ```
 
 My wav file uses 24-bit samples but I probably can't hear the difference between
-24-bit and 16-bit drum sounds so I used `ffmpeg` to downsample my .wav to
+24-bit and 16-bit drum sounds so I used `ffmpeg` to downsample my `.wav` to
 16-bit:
 ```
 $ ffmpeg -i cymbal.wav -af "aformat=s16:sample_rates=44100" cymbal-16bit.wav
@@ -541,13 +541,14 @@ Fatal error: exception Mm_audio.Audio.IO.Invalid_file
 
 So I gave up and switched to Rust.
 
-Just kidding.
-
-But I did use the [hound](https://crates.io/crates/hound) Rust library to load
-.wav files. I'd already gone to the effort of getting Rust interoperability
+[Hound](https://crates.io/crates/hound) is a Rust library for reading and
+writing `.wav` data. Unlike `mm` which supports a wide range of media, `hound`
+only supports `.wav`. Also unlike `mm`, `hound` is actually capable of reading
+`.wav` files. I'd already gone to the effort of getting Rust interoperability
 working to get access to the `cpal` library for talking to the audio driver so
-it was very easy to add an additional Rust dependency and write a little wrapper that
-reads a .wav file and copies the contained audio samples into an OCaml array.
+it was easy to add an additional Rust dependency on `hound` and write a little
+wrapper that reads a `.wav` file and copies the contained audio samples into an
+OCaml array.
 
 The first thing I did when I started this project was getting the Rust
 interoperability working as it's necessary to actually make sound at all via the
